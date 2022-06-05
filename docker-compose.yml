@@ -1,0 +1,59 @@
+version: '3'
+
+networks:
+  lan:
+    ipam:
+      driver: default
+      config:
+        - subnet: '172.19.0.0/29'
+  proxynet:
+    external: true
+    
+volumes:
+  images:
+  db:
+  
+services:
+  wallabag:
+    image: 'wallabag/wallabag:2.5.0'
+    container_name: wallabag
+    hostname: wallabag
+    restart: 'unless-stopped'
+    env_file: 
+      - .env
+      - .dbroot.env
+    volumes:
+      - 'images:/var/www/wallabag/web/assets/images'
+    networks: 
+      - lan
+      - proxynet
+    expose:
+      - 80
+    depends_on:
+      - db
+      - redis
+    labels:
+      - 'traefik.enable=true'
+      - 'traefik.docker.network=proxynet'
+      - 'traefik.http.routers.wallabag.rule=Host(`${HOSTNAME}`)'
+      - 'traefik.http.routers.wallabag.entrypoints=websecure'
+      - 'traefik.http.routers.wallabag.tls=true'
+  db:
+    image: 'mariadb:10.8'
+    container_name: mariadb
+    hostname: mariadb
+    restart: 'unless-stopped'
+    env_file: .dbroot.env
+    volumes:
+      - 'db:/var/lib/mysql'
+    networks:
+      - lan
+  redis:
+    image: 'redis:alpine'
+    container_name: redis
+    hostname: redis
+    restart: 'unless-stopped'
+    networks:
+      - lan
+
+
